@@ -4,14 +4,17 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.os.Message
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import uz.itteacher.mytodowithmvvm.R
 import java.util.Random
 
 class ReminderWorker(
-    context: Context,
+    var context: Context,
     params: WorkerParameters
 ) : Worker(context, params) {
 
@@ -19,21 +22,34 @@ class ReminderWorker(
         val title = inputData.getString("title") ?: "Task Reminder"
         val message = inputData.getString("description") ?: "You have a task coming up!"
 
-        showNotification(title, message)
+        sendNotification(context, title, message)
         return Result.success()
     }
 
-     fun showNotification(title: String, message: String) {
-        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    fun sendNotification(context: Context, title: String, message: String) {
+        val channelId = "todo_channel"
+        val notificationId = 1
 
-        val notificationBuilder = NotificationCompat.Builder(applicationContext, "reminder_channel")
+        // Android 8.0 (API 26+) uchun kanal yaratish
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "ToDo Reminder",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            val manager = context.getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
+            .build()
 
-        notificationManager.notify(Random().nextInt(), notificationBuilder.build())
+        val manager = NotificationManagerCompat.from(context)
+        manager.notify(notificationId, notification)
     }
 
 }

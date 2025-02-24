@@ -12,9 +12,9 @@ class Notes(
     val id: Int = 0,
     val title: String,
     val description: String,
-    val date: String,
+    val date: String,//24.02.2025
     val color: Int,
-    val time: String,
-    val dateTime: String
+    val time: String,//12:00
+    val dateTime: String//28.02.2025
 
 )

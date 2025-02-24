@@ -1,6 +1,8 @@
 package uz.itteacher.mytodowithmvvm.features.home.views
 
 
+import android.app.NotificationManager
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -40,11 +43,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
 import androidx.navigation.NavHostController
+import uz.itteacher.mytodowithmvvm.R
 import uz.itteacher.mytodowithmvvm.database.Notes
 
 import uz.itteacher.mytodowithmvvm.viewModel.NoteViewModel
-
+import java.util.Random
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +59,11 @@ fun HomeScreen(
     viewModel: NoteViewModel
 ) {
     var query by remember { mutableStateOf("") }
-    val queryNotes by viewModel.search(query).collectAsState(initial = emptyList())
+    val queryNotes by viewModel.sortbytoday().collectAsState(initial = emptyList())
+    val allNotes by viewModel.notes.collectAsState(initial = emptyList())
+    var flag by remember { mutableStateOf(false) }
+
+
 
     Scaffold(
         topBar = {
@@ -69,19 +78,28 @@ fun HomeScreen(
         },
         content = {
             Column(modifier = Modifier.padding(it)) {
-           OutlinedTextField(
-               value = query,
-               onValueChange = { text->query = text
-                               if (text.length > 2){
-                                   viewModel.search(query)
-                               }},
-               label = { Text(text = "Search")},
-               leadingIcon =  { Icon(Icons.Default.Search, contentDescription = null)} ,
-               modifier = Modifier
-                   .fillMaxWidth()
-                   .padding(15.dp)
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { text ->
+                        query = text
+                        if (text.length > 2) {
+                            viewModel.search(query)
+                        }
+                    },
+                    label = { Text(text = "Search") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(15.dp)
 
-           )
+                )
+
+                Row(modifier = Modifier.fillMaxWidth().padding(end = 15.dp), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = {
+                        flag = !flag
+                    })
+                    { Text(text = "View All", fontSize = 16.sp, color = Color.Blue) }
+                }
 
                 LazyVerticalStaggeredGrid(
                     columns = StaggeredGridCells.Fixed(2),
@@ -90,11 +108,19 @@ fun HomeScreen(
                     verticalItemSpacing = 8.dp,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
 
-                )  {
+                ) {
+                    if (flag){
+                        items(allNotes) {
+                            ItemNote(it, viewModel, navController)
+                        }
+                    }
+                    else {
                         items(queryNotes) {
                             ItemNote(it, viewModel, navController)
                         }
                     }
+
+                }
 
             }
         },
@@ -108,43 +134,73 @@ fun HomeScreen(
         }
     )
 }
+
 @Composable
-fun ItemNote(note: Notes, viewModel: NoteViewModel, navController: NavHostController){
+fun ItemNote(note: Notes, viewModel: NoteViewModel, navController: NavHostController) {
     val color = Color(note.color)
 
-    Card (modifier = Modifier.padding(5.dp), colors = CardDefaults.cardColors(containerColor = color)){
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .padding(10.dp)) {
+    Card(
+        modifier = Modifier.padding(5.dp),
+        colors = CardDefaults.cardColors(containerColor = color)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
 
-            ){
+            ) {
 
 
-                Text(text = if(note.title.length > 15) note.title.substring(0,10) else note.title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(
+                    text = if (note.title.length > 15) note.title.substring(0, 10) else note.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
                 Row(horizontalArrangement = Arrangement.End, modifier = Modifier.width(70.dp)) {
-                IconButton(onClick = { viewModel.deleteNote(note.id) }) {
-                    Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = Color(0xFF2A2929))
+                    IconButton(onClick = { viewModel.deleteNote(note.id) }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = Color(0xFF2A2929)
+                        )
+                    }
+                    IconButton(onClick = { navController.navigate("noteScreen/${note.id}") }) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = Color(0xFF2A2929)
+                        )
+                    }
                 }
-                IconButton(onClick = { navController.navigate("noteScreen/${note.id}") }) {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = Color(0xFF2A2929))
-                }}
             }
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(text = if(note.description.length > 150) note.description.substring(0,150)+"..." else note.description, color = Color.White)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (note.description.length > 150) note.description.substring(
+                        0,
+                        150
+                    ) + "..." else note.description, color = Color.White
+                )
             }
-            Row (modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center){
-                Text(text = "${note.dateTime} ${note.time}", modifier = Modifier
-                    .border(width = 1.dp, shape = RoundedCornerShape(8.dp), color = Color.Black)
-                    .padding(4.dp), fontSize = 12.sp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "${note.dateTime} ${note.time}", modifier = Modifier
+                        .border(width = 1.dp, shape = RoundedCornerShape(8.dp), color = Color.Black)
+                        .padding(4.dp), fontSize = 12.sp
+                )
             }
         }
     }
 }
-

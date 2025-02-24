@@ -27,6 +27,10 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%'")
     fun search(query: String): Flow<List<Notes>>
 
+    @Query("SELECT * FROM notes WHERE dateTime == :today")
+    fun sortbytoday(today: String): Flow<List<Notes>>
+
+
 
 
 }
